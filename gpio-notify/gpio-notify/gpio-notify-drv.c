@@ -791,7 +791,7 @@ static int gpio_event_open( struct inode *inode, struct file *file )
 
     file->private_data = fileData;
 
-    spin_lock_irqsave( &gFileListLock, flags );
+    spin_lock_irqsave( &gFileListLock, flags ); // disable interrupts before taking the spinlock
     {
         list_add_tail( &fileData->list, &gFileList );
     }
@@ -952,7 +952,8 @@ static int __init gpio_event_init( void )
     gGpioEventCDev.owner = THIS_MODULE;
 
     if (( rc = cdev_add( &gGpioEventCDev, gGpioEventDevNum, 1 )) != 0 )
-    {
+    //error handling  
+    { 
         printk( KERN_WARNING "sample: cdev_add failed: %d\n", rc );
         return rc;
     }
@@ -960,6 +961,7 @@ static int __init gpio_event_init( void )
     // Create a class, so that udev will make the /dev entry
 
     gGpioEventClass = class_create( THIS_MODULE, GPIO_EVENT_DEV_NAME );
+    //error handling
     if ( IS_ERR( gGpioEventClass ))
     {
         printk( KERN_WARNING "sample: Unable to create class\n" );
