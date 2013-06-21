@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 34
+/!svn/ver/266/linux/gpio-event/app
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/!svn/ver/244/linux/gpio-event/app/Makefile
+END
+gpio-event.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/!svn/ver/266/linux/gpio-event/app/gpio-event.c
+END
