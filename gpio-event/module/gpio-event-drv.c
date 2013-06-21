@@ -48,7 +48,8 @@
 /* ---- Public Variables ------------------------------------------------- */
 /* ---- Private Constants and Types -------------------------------------- */
 
-#define GPIO_EVENT_DEV_NAME "gpio-event"
+//#define GPIO_EVENT_DEV_NAME "gpio-event"
+#define GPIO_EVENT_DEV_NAME "gpio-geiger"
 
 #define DEBUG_ENABLED   1
 
