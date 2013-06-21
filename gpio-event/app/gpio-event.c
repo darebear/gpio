@@ -68,6 +68,8 @@ enum
     OPT_HELP,
 };
 
+// option type from <getopt.h>. http://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Options.html#Getopt-Long-Options 
+// struct option fields: {const char *name, int has_arg, int *flag, int val}
 struct option gOption[] =
 {
     { "binary",     no_argument,        NULL,       OPT_BINARY },
@@ -112,8 +114,8 @@ static void Usage( void )
 
 int main( int argc, char **argv )
 {
-    char                shortOptsStr[ sizeof( gOption ) / sizeof( gOption[ 0 ] ) + 1 ];
-    char               *shortOpts = shortOptsStr;
+    char                shortOptionString[ sizeof( gOption ) / sizeof( gOption[ 0 ] ) + 1 ];
+    char               *shortOpts = shortOptionString;
     struct option      *scanOpt;
     int                 opt;
     int                 arg;
@@ -123,7 +125,7 @@ int main( int argc, char **argv )
 
     for ( scanOpt = gOption; scanOpt->name != NULL; scanOpt++ ) 
     {
-        if (( scanOpt->flag == NULL ) && ( scanOpt->val < OPT_FIRST_LONG_OPT ))
+        if (( scanOpt->flag == NULL ) && ( scanOpt->val < OPT_FIRST_LONG_OPT )) //there are short options
         {
             *shortOpts++ = (char)scanOpt->val;
 
@@ -137,11 +139,11 @@ int main( int argc, char **argv )
 
     // Parse the command line options
 
-    while (( opt = getopt_long( argc, argv, shortOptsStr, gOption, NULL )) != -1 )
+    while (( opt = getopt_long( argc, argv, shortOptionString, gOption, NULL )) != -1 )
     {
         switch ( opt )
         {
-            case 0: 
+           case 0: 
             {
                 // getopt_long returns 0 for entries where flag is non-NULL
 
@@ -204,13 +206,15 @@ int main( int argc, char **argv )
     }
     argc -= optind;
     argv += optind;
-
+    
+    // #fasync
     if (( fs = fopen( "/dev/gpio-event", "r" )) == NULL )
     {
         perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
         exit( 1 );
     }
 
+    // #fasync
     if ( gBinary )
     {
         ioctl( fileno( fs ), GPIO_EVENT_IOCTL_SET_READ_MODE, gBinary );
@@ -224,8 +228,21 @@ int main( int argc, char **argv )
         long                    gpio;
         char                   *gpioStr = argv[ arg ];
         char                   *endPtr;
-        GPIO_EventMonitor_t     monitor;
+        GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
 
+        /* GPIO_EventMonitor_t struct declaration
+        typedef struct
+        {
+            uint8_t                 gpio;               // gpio to monitor
+            uint8_t                 onOff;              // 0 = stop monitoring, 1 = start monitoring
+            GPIO_EventEdgeType_t    edgeType;           // Monitor rising/falling/both edges?
+            uint8_t                 debounceMilliSec;   // debounce time in milliseconds
+
+        } GPIO_EventMonitor_t;
+        */
+
+        // Turn pin on or off
+        //strtol: convert a string to a long integer
         gpio = strtol( gpioStr, &endPtr, 0 );
         if ( gpio < 0 )
         {
@@ -248,7 +265,7 @@ int main( int argc, char **argv )
             fprintf( stderr, "Expecting punctuation character, found '%c'\n", *endPtr );
             exit( 1 );
         }
-        endPtr++;
+        endPtr++; //advances from the expected : to the next field
 
         switch ( *endPtr )
         {
@@ -268,6 +285,7 @@ int main( int argc, char **argv )
             }
         }
 
+        // Setup debounce
         monitor.debounceMilliSec = 0;
         while ( isalpha( *endPtr ))
         {
@@ -285,6 +303,18 @@ int main( int argc, char **argv )
             monitor.debounceMilliSec = strtol( endPtr, NULL, 0 );
         }
 
+        /* Description of the ioctl call
+         * int ioctl( ind d, int request, ...);
+         * where d is an open file descriptor, request is a device depentd request code, 
+         * ... is a pointer to data going/coming to/from the driver. 
+         *
+         * The second argument, GPIO_EVENT_IOCTRL_MONITOR_GPIO is a macro used to generate ioctl command numbers. 
+         *
+         * #define GPIO_EVENT_IOCTL_MONITOR_GPIO   _IOW( GPIO_EVENT_IOCTL_MAGIC, GPIO_EVENT_CMD_MONITOR_GPIO,  GPIO_EventMonitor_t ) // arg is GPIO_EventMonitor *
+         *
+         * where _IOW is defined in /usr/include/asm/ioctl.h and is used for an ioctl that writes data TO the driver. The driver can return sizeof(data_type) bytes to the user. 
+         * _IOW(int type, int number, data_type) - similar to _IOR, but used to write data to the driver.
+        */
         if ( ioctl( fileno( fs ), GPIO_EVENT_IOCTL_MONITOR_GPIO, &monitor ) != 0 )
         {
             perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
