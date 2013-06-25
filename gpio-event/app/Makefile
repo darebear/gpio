@@ -4,7 +4,7 @@
 #
 #############################################################################
 
-APPNAME		= gpio-event
+APPNAME		= geiger-app
 
 MACHINE_NAME = foofoo
 
@@ -37,7 +37,7 @@ CFLAGS += \
 
 DEP_OUTPUT_OPTION = -MMD -MF $(@:.o=.d)
 
-OBJ_FILES = gpio-event.o
+OBJ_FILES = geiger-app.o
 
 $(APPNAME) : $(OBJ_FILES)
 	@echo "Creating executable $@ ..."

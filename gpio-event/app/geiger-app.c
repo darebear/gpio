@@ -36,6 +36,8 @@
 
 #include "gpio-event-drv.h"
 
+#define GPIO_DEVICE_FILENAME "/dev/gpio-geiger"
+
 /* ---- Public Variables ------------------------------------------------- */
 
 int     gDebug      = 0;
@@ -119,7 +121,7 @@ int main( int argc, char **argv )
     struct option      *scanOpt;
     int                 opt;
     int                 arg;
-    FILE               *fs;
+    //FILE               *fs;
 
     // Figure out the short options from our options structure
 
@@ -208,12 +210,33 @@ int main( int argc, char **argv )
     argv += optind;
     
     // #fasync
-    if (( fs = fopen( "/dev/gpio-event", "r" )) == NULL )
+    /*
+    if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
     {
         perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
         exit( 1 );
     }
+    */
 
+    // open the gpio-event device
+    int fs = open(GPIO_DEVICE_FILENAME, O_RDONLY | O_NONBLOCK);
+    if(fs == -1) {
+        fprintf(stderr, "Could not open %s\n", GPIO_DEVICE_FILENAME);
+        
+        exit(1);
+    }
+    
+    printf("Opened device file %s on fd %d.\n", GPIO_DEVICE_FILENAME, fs);
+    
+    // set this process as owner of the device file
+    printf("Setting file owner.\n");
+    fcntl(fs, F_SETOWN, getpid());
+    
+    // set FASYNC flag on the device file to enable SIGIO notifications
+    printf("Setting FASYNC flag.\n");
+    int oflags = fcntl(fs, F_GETFL);
+    fcntl(fs, F_SETFL, oflags | FASYNC);
+    
     // #fasync
     if ( gBinary )
     {
@@ -267,6 +290,7 @@ int main( int argc, char **argv )
         }
         endPtr++; //advances from the expected : to the next field
 
+        printf("At edge-type switch.\n");
         switch ( *endPtr )
         {
             case 'r':
@@ -286,6 +310,8 @@ int main( int argc, char **argv )
         }
 
         // Setup debounce
+        printf("At debounce.\n");
+        switch ( *endPtr )
         monitor.debounceMilliSec = 0;
         while ( isalpha( *endPtr ))
         {
@@ -315,10 +341,13 @@ int main( int argc, char **argv )
          * where _IOW is defined in /usr/include/asm/ioctl.h and is used for an ioctl that writes data TO the driver. The driver can return sizeof(data_type) bytes to the user. 
          * _IOW(int type, int number, data_type) - similar to _IOR, but used to write data to the driver.
         */
+        
+        printf("At ioctl fileno check.\n");
         if ( ioctl( fileno( fs ), GPIO_EVENT_IOCTL_MONITOR_GPIO, &monitor ) != 0 )
         {
             perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
         }
+        printf("At line after ioctl fileno check.\n");
     }
 
     if ( gMonitor || ( gExecuteStr != NULL ))
