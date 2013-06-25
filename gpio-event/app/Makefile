@@ -6,8 +6,15 @@
 
 APPNAME		= gpio-event
 
-OVEROTOP	?= /home/gumstix/overo-oe
-CROSS_COMPILE	?= $(OVEROTOP)/tmp/cross/armv7a/bin/arm-angstrom-linux-gnueabi-
+MACHINE_NAME = foofoo
+
+ifeq ($(MACHINE_NAME),foofoo)
+	OVEROTOP	?= /home/dario/overo-oe
+	CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
+else
+	OVEROTOP	?= /home/gumstix/overo-oe
+	CROSS_COMPILE	?= $(OVEROTOP)/tmp/cross/armv7a/bin/arm-angstrom-linux-gnueabi-
+endif
 
 CC		= $(CROSS_COMPILE)gcc
 
