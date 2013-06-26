@@ -28,6 +28,23 @@
 #include <unistd.h>
 #include <string.h>
 
+// just in case #include <time.h> (main.cpp)
+#include <stdint.h>
+//#include <stdlib.h>
+//#include <vector>
+//#include <sys/types.h>
+//#include <unistd.h>
+//#include <pthread.h>
+#include <signal.h>
+//#include <list>
+
+// gpio-notify
+#include <sys/ioctl.h>
+
+// for geiger handling
+#include <pthread.h>
+#include <signal.h>
+
 //#include "svn-version.h"
 
 #if !defined( SVN_REVISION )
@@ -107,6 +124,60 @@ static void Usage( void )
     fprintf( stderr, "  -h, --help          Prints this information\n" );
 
 } // Usage
+
+/***************************************************************************
+* Geiger handler function  
+****************************************************************************/
+sigset_t mask;
+//void* geiger_handler_function(void * comm){
+void* geiger_handler_function(void *arg){
+	//char tmp_buf[1024], temp1;
+	//int signo, i, j;
+	int signo;
+    int inputId = *(int *)arg;
+    
+	for(;;){
+        
+        // Suspend geiger_handler thread until a signal is available
+        //
+        printf("At sigwait.. \n");
+		sigwait(&mask, &signo); //&mask is defined in main function
+        printf("Sigwait triggered! \n");
+
+        
+        /*
+		int n = ((RS232 *)comm)->rx( (char *)tmp_buf, 1024);
+		//printf("enqueue_incoming:%d\n", n);
+		//if(n > (CMD_PKT_SZ+3) || n < CMD_PKT_SZ) continue;
+		if(n < RCV_PKT_SZ) continue;
+		for(i=0, j=0; i<n; i++){
+			//readBuffer.push_back(tmp_buf[i]);
+			temp1 = tmp_buf[i];
+			//if(i == 0) printf("enqueue_incoming (%d): ", n);
+			printf("[%x]", temp1);
+			if(temp1 == CMD_START || temp1 == ACK_START || temp1 == DATA_START || j > 0);
+			else continue;
+
+			//cout << "Enqueue_Incoming start..." << endl;
+			rcv_buff[j] = temp1; j++;
+			if(temp1 == CMD_END || temp1 == ACK_END || temp1 == DATA_END) 
+			{
+				//printf("[%d:%d]\n", i, temp1);
+				printf("\n");
+				temp1 = rcv_buff[RCV_PKT_SZ-1];
+				if((rcv_buff[0] == CMD_START && temp1 == CMD_END)
+				|| (rcv_buff[0] == ACK_START && temp1 == ACK_END)
+				|| (rcv_buff[0] == DATA_START && temp1 == DATA_END))
+					queue_enqueue(&rx_queue,rcv_buff);
+				else printf("RS232 messages are not accepted!!\n");
+				break;
+			}
+
+		}
+        */
+		//if(i > 0) printf("\n");
+	}
+} // geiger_handler
 
 /****************************************************************************
 *
@@ -223,19 +294,41 @@ int main( int argc, char **argv )
         perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
         exit( 1 );
     }
+    
+    // Multi-threading
+	// Set SIGIO such that the main process ignores the signal
+    // POSIX signal set
+	sigset_t oldmask;
+    //Initializes the signal set given by &mask to empty w/all signals excluded from the set
+	sigemptyset(&mask);
+    //Add SIGIO signal to &mask
+	sigaddset(&mask, SIGIO);    // SIGIO is a signat that indicates an input/output status change 
+    // SIG_BLOCK creates union of &mask and the current signal set, however at this point &mask is just SIGIO.
+    // &mask is copied over to &oldmask 
+	pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
+
+    int *inputId = malloc(sizeof(int));
+
+	// Setup Read Geiger Thread
+	pthread_t geiger_handler;
+	pthread_create(&geiger_handler, NULL, geiger_handler_function, inputId); 
+	fcntl( fileno(fs), F_SETOWN, geiger_handler);
+	fcntl( fileno(fs), F_SETFL, FASYNC);
+    // End Read Geiger Thread Setup
+    printf("Set FASYNC flag and created geiger_handler thread\n");
 
     /* Adding only FASYNC to the original gpio-event app code*/
 
     // set this process as owner of the device file
-    printf("Setting file owner.\n");
-    int fd = fileno(fs);
-    fcntl( fd, F_SETOWN, getpid());
+    //printf("Setting file owner.\n");
+    //int fd = fileno(fs);
+    //fcntl( fd, F_SETOWN, getpid());
     
     // set FASYNC flag on the device file to enable SIGIO notifications
-    printf("Setting FASYNC flag.\n");
-    int oflags = fcntl(fd, F_GETFL);
-    fcntl(fd, F_SETFL, oflags | FASYNC);
-    printf("Setting FASYNC flag.. Done.\n");
+    //printf("Setting FASYNC flag.\n");
+    //int oflags = fcntl(fd, F_GETFL);
+    //fcntl(fd, F_SETFL, oflags | FASYNC);
+    //printf("Setting FASYNC flag.. Done.\n");
 
     /* Adding FASYNC and opening mechanism to gpio-event from gpio-notify */
     /*
