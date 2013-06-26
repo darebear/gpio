@@ -1,0 +1,4 @@
+// int fs = fopen(GPIO_DEVICE_FILENAME, O_RDONLY | O_NONBLOCK);
+// geiger-app.c:246: warning: passing argument 2 of 'fopen' makes pointer from integer without a cast
+// TODO: what do the flags O_RDONLY and O_NONBLOCK do? 
+// TODO: can this be implemented with the fopen arguments?

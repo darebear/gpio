@@ -121,7 +121,7 @@ int main( int argc, char **argv )
     struct option      *scanOpt;
     int                 opt;
     int                 arg;
-    //FILE               *fs;
+    FILE               *fs;
 
     // Figure out the short options from our options structure
 
@@ -209,7 +209,7 @@ int main( int argc, char **argv )
     argc -= optind;
     argv += optind;
     
-    // #fasync
+    /* Original gpio-event */
     /*
     if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
     {
@@ -217,6 +217,32 @@ int main( int argc, char **argv )
         exit( 1 );
     }
     */
+
+    if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
+    {
+        perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
+        exit( 1 );
+    }
+
+    /* Adding only FASYNC to the original gpio-event app code*/
+
+    // set this process as owner of the device file
+    printf("Setting file owner.\n");
+    int fd = fileno(fs);
+    fcntl( fd, F_SETOWN, getpid());
+    
+    // set FASYNC flag on the device file to enable SIGIO notifications
+    printf("Setting FASYNC flag.\n");
+    int oflags = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, oflags | FASYNC);
+    printf("Setting FASYNC flag.. Done.\n");
+
+    /* Adding FASYNC and opening mechanism to gpio-event from gpio-notify */
+    /*
+    // set FASYNC flag on the device file to enable SIGIO notifications
+    printf("Setting FASYNC flag.\n");
+    int oflags = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, oflags | FASYNC);
 
     // open the gpio-event device
     int fs = open(GPIO_DEVICE_FILENAME, O_RDONLY | O_NONBLOCK);
@@ -236,6 +262,7 @@ int main( int argc, char **argv )
     printf("Setting FASYNC flag.\n");
     int oflags = fcntl(fs, F_GETFL);
     fcntl(fs, F_SETFL, oflags | FASYNC);
+    */
     
     // #fasync
     if ( gBinary )
