@@ -1,63 +1,71 @@
 #############################################################################
 #
-#	Makefile for building the gpio-event application
+#	Makefile for building the char-driver sample module
 #
 #############################################################################
 
-APPNAME		= geiger-app
-
-MACHINE_NAME = foofoo
-
-ifeq ($(MACHINE_NAME),foofoo)
-	OVEROTOP	?= /home/dario/overo-oe
-	CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
+ifeq ($(DEBUG),y)
+	CFLAGS += -O -g		# -O is need to expand inlines
 else
-	OVEROTOP	?= /home/gumstix/overo-oe
-	CROSS_COMPILE	?= $(OVEROTOP)/tmp/cross/armv7a/bin/arm-angstrom-linux-gnueabi-
+	CFLAGS += -O2
 endif
 
-CC		= $(CROSS_COMPILE)gcc
+ifneq ($(KERNELRELEASE),)
+# call from kernel build system
 
-CFLAGS += \
-	-std=gnu99 \
-	-Wall \
-	-Wimplicit \
-	-Wpointer-arith \
-	-Wswitch \
-	-Wredundant-decls \
-	-Wreturn-type \
-	-Wshadow \
-	-Wunused \
-	-Wcast-qual \
-	-Wnested-externs \
-	-Wmissing-prototypes \
-	-Wstrict-prototypes \
-	-Wmissing-declarations \
-	-I ../module
+obj-m	:= gpio-notify-drv.o
 
-DEP_OUTPUT_OPTION = -MMD -MF $(@:.o=.d)
+else
 
-OBJ_FILES = geiger-app.o
+PWD       := $(shell pwd)
 
-$(APPNAME) : $(OBJ_FILES)
-	@echo "Creating executable $@ ..."
-	$(CC) -o $@ $^
+#GUMSTIX_BUILDROOT	= $(PWD)/../cx-1575
+#BUILD_ARM		= $(wildcard $(GUMSTIX_BUILDROOT)/build_arm*)
+#KERNELDIR 		?= $(wildcard $(BUILD_ARM)/linux-*)
+#CROSS_COMPILE		= $(BUILD_ARM)/staging_dir/bin/arm-linux-
+OVEROTOP	?= /home/dario/overo-oe
+CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
 
-.PHONY: %.d
-%.d: ;
+#default: user-apps kernel-module
+default: user-apps 
 
-%.o : %.c %.d
-	@echo "Compiling $< ..."
-	$(COMPILE.c) $(DEP_OUTPUT_OPTION) $(OUTPUT_OPTION) $<
+.PHONY: user-apps 
+
+#user-apps: gpio-notify
+user-apps: geiger-app 
+
+TARGET_ARCH=-Os -march=armv5te -mtune=xscale -Wa,-mcpu=xscale
+#CC = $(CROSS_COMPILE)gcc
+
+CC = $(CROSS_COMPILE)gcc
+
+CPPFLAGS	+= 
+CFLAGS		+= -Wall -lpthread
+
+GPIO_HEADERS := gpio.h spi.h dcb.h
+GPIO_SOURCES := gpio.c spi.c
+
+geiger-app: geiger-app.c 
+	$(CC) $(CFLAGS) -o $@ $< 
+
+#gpio-notify: gpio-notify.c $(GPIO_SOURCES) $(GPIO_HEADERS)
+	#$(CC) $(CFLAGS) -o $@ $< $(GPIO_SOURCES)
+
+kernel-module:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) modules
+
+endif
 
 clean:
-	rm -rf $(APPNAME) *.o *.d
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions Module.symvers
+	rm -rf gpio-notify
 
-DEP_FILES = $(strip $(OBJ_FILES:.o=.d))
+depend .depend dep: #svn-version.h
+	@echo "Creating dependencies ..."
+	$(CC) $(CFLAGS) -M *.c $(SHARED)/*.c > .depend
 
-ifneq ($(DEP_FILES),)
-ifeq ($(strip $(filter clean%, $(MAKECMDGOALS))),)
--include $(DEP_FILES)
+#include $(ROBOSTIX)/svn-version.mk
+								 
+ifeq (.depend,$(wildcard .depend))
+include .depend
 endif
-endif
-
