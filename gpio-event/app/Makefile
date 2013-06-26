@@ -19,23 +19,14 @@ else
 
 PWD       := $(shell pwd)
 
-#GUMSTIX_BUILDROOT	= $(PWD)/../cx-1575
-#BUILD_ARM		= $(wildcard $(GUMSTIX_BUILDROOT)/build_arm*)
-#KERNELDIR 		?= $(wildcard $(BUILD_ARM)/linux-*)
-#CROSS_COMPILE		= $(BUILD_ARM)/staging_dir/bin/arm-linux-
 OVEROTOP	?= /home/dario/overo-oe
 CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
 
-#default: user-apps kernel-module
 default: user-apps 
 
 .PHONY: user-apps 
 
-#user-apps: gpio-notify
 user-apps: geiger-app 
-
-TARGET_ARCH=-Os -march=armv5te -mtune=xscale -Wa,-mcpu=xscale
-#CC = $(CROSS_COMPILE)gcc
 
 CC = $(CROSS_COMPILE)gcc
 
@@ -48,24 +39,16 @@ GPIO_SOURCES := gpio.c spi.c
 geiger-app: geiger-app.c 
 	$(CC) $(CFLAGS) -o $@ $< 
 
-#gpio-notify: gpio-notify.c $(GPIO_SOURCES) $(GPIO_HEADERS)
-	#$(CC) $(CFLAGS) -o $@ $< $(GPIO_SOURCES)
-
-kernel-module:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) modules
-
 endif
 
 clean:
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions Module.symvers
-	rm -rf gpio-notify
+	rm -rf geiger-app
 
 depend .depend dep: #svn-version.h
 	@echo "Creating dependencies ..."
 	$(CC) $(CFLAGS) -M *.c $(SHARED)/*.c > .depend
 
-#include $(ROBOSTIX)/svn-version.mk
-								 
 ifeq (.depend,$(wildcard .depend))
 include .depend
 endif
