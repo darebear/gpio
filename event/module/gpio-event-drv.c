@@ -20,22 +20,21 @@
 
 /* ---- Include Files ---------------------------------------------------- */
 
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/list.h>
-#include <linux/fs.h>
-#include <linux/spinlock.h>
-#include <linux/proc_fs.h>
-#include <linux/sysctl.h>
-#include <linux/poll.h>
-#include <linux/interrupt.h>
-#include <linux/device.h>
 #include <linux/cdev.h>
-#include <linux/seq_file.h>
-#include <linux/spinlock.h>
-#include <linux/version.h>
+#include <linux/device.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/interrupt.h>
+#include <linux/list.h>
+#include <linux/module.h>
+#include <linux/poll.h>
+#include <linux/proc_fs.h>
 #include <linux/sched.h>
+#include <linux/seq_file.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/spinlock.h>
+#include <linux/sysctl.h>
 #include <linux/version.h>
 
 #include <asm/uaccess.h>
@@ -150,6 +149,9 @@ typedef struct
 
     char                    buffer[ GPIO_EVENT_BUFFER_SIZE ];
     int                     bufBytes;
+
+    //fasync
+    struct fasync_struct *async_queue;
 
 } GPIO_FileData_t;
 
@@ -446,7 +448,14 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
     list_for_each( file, &gFileList )
     {
         GPIO_FileData_t *fileData = list_entry( file, GPIO_FileData_t, list );
+        
+        // jsg: notify processes waiting on fasync notifications
+        if(fileData->async_queue)
+        {
+            kill_fasync(&fileData->async_queue, SIGIO, POLL_IN);
+        }
 
+        /*
         spin_lock( &fileData->queueLock );
         {
             if ( fileData->numEvents >= GPIO_EVENT_QUEUE_LEN )
@@ -473,6 +482,7 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
         spin_unlock( &fileData->queueLock );
 
         wake_up_interruptible( &fileData->waitQueue );
+        */
     }
     spin_unlock_irqrestore( &gFileListLock, flags );
 
@@ -485,7 +495,7 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
 *   Removes an event from the queue
 *
 ****************************************************************************/
-
+/*
 static int gpio_event_dequeue_event( GPIO_FileData_t *fileData, GPIO_Event_t *gpioEvent )
 {
     unsigned long   flags;
@@ -524,7 +534,7 @@ static int gpio_event_dequeue_event( GPIO_FileData_t *fileData, GPIO_Event_t *gp
     return eventAvailable;
 
 } // gpio_event_dequeue_event
-
+*/
 /****************************************************************************
 *
 *  gpio_event_irq
@@ -1036,6 +1046,21 @@ static unsigned int gpio_event_poll(struct file *file, poll_table *wait)
 
 } // gpio_event_poll
 
+/*****************************************************************************
+*
+*  gpio_event_fasync
+*
+*   jsg: Add/remove an asynchronous reader to the SIGIO notification queue
+*
+****************************************************************************/
+
+static int gpio_event_fasync(int fd, struct file *filp, int mode)
+{
+    GPIO_FileData_t *fileData = filp->private_data;
+    
+    return fasync_helper(fd, filp, mode, &fileData->async_queue);
+}
+
 /****************************************************************************
 *
 *  gpio_event_release
@@ -1054,6 +1079,9 @@ static int gpio_event_release( struct inode *inode, struct file *file )
         list_del( &fileData->list );
     }
     spin_unlock_irqrestore( &gFileListLock, flags );
+
+    // jsg: remove this file from fasync notifcation queue
+    gpio_event_fasync(-1, file, 0);
 
     kfree( fileData );
 
@@ -1075,6 +1103,8 @@ struct file_operations gpio_event_fops =
     poll:       	gpio_event_poll,
     release:    	gpio_event_release,
     read:       	gpio_event_read,
+    // jsg: add reference to fasync method
+    fasync:     gpio_event_fasync
 };
 
 /****************************************************************************
