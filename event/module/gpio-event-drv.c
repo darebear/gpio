@@ -150,7 +150,7 @@ typedef struct
     char                    buffer[ GPIO_EVENT_BUFFER_SIZE ];
     int                     bufBytes;
 
-    //fasync
+    // jsg: queue of files/processes who have registered to receive asynchronous notifications
     struct fasync_struct *async_queue;
 
 } GPIO_FileData_t;
@@ -495,7 +495,6 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
 *   Removes an event from the queue
 *
 ****************************************************************************/
-/*
 static int gpio_event_dequeue_event( GPIO_FileData_t *fileData, GPIO_Event_t *gpioEvent )
 {
     unsigned long   flags;
@@ -534,7 +533,7 @@ static int gpio_event_dequeue_event( GPIO_FileData_t *fileData, GPIO_Event_t *gp
     return eventAvailable;
 
 } // gpio_event_dequeue_event
-*/
+
 /****************************************************************************
 *
 *  gpio_event_irq
@@ -1104,7 +1103,7 @@ struct file_operations gpio_event_fops =
     release:    	gpio_event_release,
     read:       	gpio_event_read,
     // jsg: add reference to fasync method
-    fasync:     gpio_event_fasync
+    fasync:         gpio_event_fasync
 };
 
 /****************************************************************************

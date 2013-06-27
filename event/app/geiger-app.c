@@ -557,7 +557,7 @@ int main( int argc, char **argv )
 
                     if ( gMonitor )
                     {
-                        //printf( "Read: '%s'\n", argStr );
+                        printf( "Read:/ '%s'\n", argStr );
                     }
                 }
                 else
