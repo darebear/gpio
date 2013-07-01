@@ -455,7 +455,6 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
             kill_fasync(&fileData->async_queue, SIGIO, POLL_IN);
         }
 
-        /*
         spin_lock( &fileData->queueLock );
         {
             if ( fileData->numEvents >= GPIO_EVENT_QUEUE_LEN )
@@ -482,7 +481,7 @@ static void gpio_event_queue_event( const GPIO_Event_t *gpioEvent )
         spin_unlock( &fileData->queueLock );
 
         wake_up_interruptible( &fileData->waitQueue );
-        */
+
     }
     spin_unlock_irqrestore( &gFileListLock, flags );
 

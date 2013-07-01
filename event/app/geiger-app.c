@@ -129,8 +129,8 @@ static void Usage( void )
 * Geiger handler function  
 ****************************************************************************/
 sigset_t mask;
-//void* geiger_handler_function(void * comm){
-void* geiger_handler_function(void *arg){
+//void* geiger_thread_function(void * comm){
+void* geiger_handler(void *arg){
 	//char tmp_buf[1024], temp1;
 	//int signo, i, j;
 	int signo;
@@ -177,7 +177,7 @@ void* geiger_handler_function(void *arg){
         */
 		//if(i > 0) printf("\n");
 	}
-} // geiger_handler
+} // geiger_thread
 
 /****************************************************************************
 *
@@ -310,12 +310,13 @@ int main( int argc, char **argv )
     int *inputId = malloc(sizeof(int));
 
 	// Setup Read Geiger Thread
-	pthread_t geiger_handler;
-	pthread_create(&geiger_handler, NULL, geiger_handler_function, inputId); 
-	fcntl( fileno(fs), F_SETOWN, geiger_handler);
+	pthread_t geiger_thread;
+	pthread_create(&geiger_thread, NULL, geiger_handler, inputId); 
+	fcntl( fileno(fs), F_SETOWN, geiger_thread);
+	//fcntl( fileno(fs), F_SETOWN, getpid() );
 	fcntl( fileno(fs), F_SETFL, FASYNC);
     // End Read Geiger Thread Setup
-    printf("Set FASYNC flag and created geiger_handler thread\n");
+    printf("Set FASYNC flag and created geiger_thread thread\n");
 
     /* Adding only FASYNC to the original gpio-event app code*/
 
