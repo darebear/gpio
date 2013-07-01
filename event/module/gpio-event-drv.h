@@ -42,7 +42,7 @@
 #define GPIO_EVENT_IOCTL_MAGIC  'G'
 
 /**
- *  Deefines for each of the ioctl commands. Note that since we want to reduce
+ *  Defines for each of the ioctl commands. Note that since we want to reduce
  *  the possibility that a user mode program gets out of sync with a given 
  *  driver, we explicitly assign a value to each enumeration. This makes
  *  it more difficult to stick new ioctl's in the middle of the list.
