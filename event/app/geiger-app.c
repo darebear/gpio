@@ -20,13 +20,13 @@
 
 /* ---- Include Files ---------------------------------------------------- */
 
+#include <ctype.h>
+#include <fcntl.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 // just in case #include <time.h> (main.cpp)
 #include <stdint.h>
@@ -74,7 +74,7 @@ enum
 
     OPT_BINARY      = 'b',
     OPT_DEBUG       = 'd',
-    OPT_EXECUTE     = 'e',
+    OPT_EXECUTE     = 'e', // executes a script
     OPT_MONITOR     = 'm',
     OPT_VERBOSE     = 'v',
     OPT_VERSION     = 'V',
@@ -280,15 +280,6 @@ int main( int argc, char **argv )
     argc -= optind;
     argv += optind;
     
-    /* Original gpio-event */
-    /*
-    if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
-    {
-        perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
-        exit( 1 );
-    }
-    */
-
     if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
     {
         perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
@@ -469,8 +460,10 @@ int main( int argc, char **argv )
             perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
         }
         printf("At line after ioctl fileno check.\n");
-    }
+    }//for arg..
 
+    //switch #ms
+    // if we have set monitor or have requested launching a script
     if ( gMonitor || ( gExecuteStr != NULL ))
     {
         while ( 1 )
