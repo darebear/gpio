@@ -177,6 +177,17 @@ int main( int argc, char **argv )
     sigwait(&waitSignals, &signal);
     printf("At FASYNC_NOTIFY, signal received! \n");
     
+    // Setup Read Geiger Thread
+	pthread_t geiger_thread;
+	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
+	fcntl( fd, F_SETOWN, geiger_thread);
+	//fcntl( fd, F_SETOWN, getpid() );
+    int oflags = fcntl( fd, F_GETFL);
+    fcntl( fd, F_SETFL, oflags | FASYNC);
+	//fcntl( fd, F_SETFL, FASYNC);
+    // End Read Geiger Thread Setup
+    printf("Set FASYNC flag and created geiger_thread thread\n");
+    
 #endif
 
 
