@@ -49,7 +49,7 @@
 
 #include "gpio-event-drv.h"
 
-#define GPIO_DEVICE_FILENAME "/dev/gpio-geiger"
+#define GPIO_DEVICE_FILENAME "/dev/gpio-event"
 
 /***************************************************************************
 * Geiger handler function  
@@ -105,6 +105,14 @@ void* geiger_handler(void *arg){
 	}
 } // geiger_thread
 
+//#define MULTITHREADING
+//#define MULTITHREADING_LDD3
+//#define MULTITHREADING_MAIN 
+//#define REPORT_IN_MAIN 
+//#define OPEN_EVENT
+#define OPEN_NOTIFY
+#define FASYNC_NOTIFY 
+
 /****************************************************************************
 *
 *  main
@@ -116,14 +124,63 @@ int main( int argc, char **argv )
 
     FILE               *fs;
 
-    if (( fs = fopen( "/dev/gpio-geiger", "r" )) == NULL )
+#ifdef OPEN_EVENT
+    if (( fs = fopen( GPIO_DEVICE_FILENAME, "r" )) == NULL )
     {
         perror( "Check to make sure gpio_event_drv has been loaded. Unable to open /dev/gpio-event" );
         exit( 1 );
     }
-    
+    int fd = fileno(fs);
+#endif
 
-    /*
+#ifdef OPEN_NOTIFY
+    int fd = open( GPIO_DEVICE_FILENAME, O_RDONLY | O_NONBLOCK );
+    if (fd==-1)
+    {
+        printf( "Could not open %s \n", GPIO_DEVICE_FILENAME);
+        exit(1);
+    }
+    printf( "Opened device file %s on fd %d. \n", GPIO_DEVICE_FILENAME, fd);
+#endif
+
+#ifdef FASYNC_NOTIFY
+    // set this process as owner of the device file
+    printf("Setting file owner.\n");
+    fcntl(fd, F_SETOWN, getpid());
+    
+    // set FASYNC flag on the device file to enable SIGIO notifications
+    printf("Setting FASYNC flag.\n");
+    int oflags = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, oflags | FASYNC);
+
+    // specify which signals we will catch
+    sigset_t waitSignals;
+    sigemptyset(&waitSignals);
+    sigaddset(&waitSignals, SIGIO);
+
+    // Set up the GPIO
+    GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
+    monitor.gpio    = 168;
+    monitor.onOff   = 1;
+    monitor.edgeType = GPIO_EventRisingEdge;
+    monitor.debounceMilliSec = 0;
+    
+    printf("Enable monitoring on pin %d.\n", monitor.gpio);
+    if ( ioctl( fd, GPIO_EVENT_IOCTL_MONITOR_GPIO, &monitor ) != 0 )
+    {
+        perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
+        printf( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
+    }
+
+    int signal;
+    printf("At FASYNC_NOTIFY, waiting for signal .. \n");
+    sigwait(&waitSignals, &signal);
+    printf("At FASYNC_NOTIFY, signal received! \n");
+    
+#endif
+
+
+#ifdef MULTITHREADING_MAIN
     // Multi-threading
 	// Set SIGIO such that the main process ignores the signal
     // POSIX signal set
@@ -131,20 +188,34 @@ int main( int argc, char **argv )
     //Initializes the signal set given by &mask to empty w/all signals excluded from the set
 	sigemptyset(&mask);
     //Add SIGIO signal to &mask
-	sigaddset(&mask, SIGIO);    // SIGIO is a signat that indicates an input/output status change 
+	sigaddset(&mask, SIGIO);    // SIGIO is a signal that indicates an input/output status change 
     // SIG_BLOCK creates union of &mask and the current signal set, however at this point &mask is just SIGIO.
     // &mask is copied over to &oldmask 
 	pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
+#endif 
 
+#ifdef MULTITHREADING_MAIN
 	// Setup Read Geiger Thread
 	pthread_t geiger_thread;
 	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
-	fcntl( fileno(fs), F_SETOWN, geiger_thread);
-	//fcntl( fileno(fs), F_SETOWN, getpid() );
-	fcntl( fileno(fs), F_SETFL, FASYNC);
+	fcntl( fd, F_SETOWN, geiger_thread);
+	//fcntl( fd, F_SETOWN, getpid() );
+    int oflags = fcntl( fd, F_GETFL);
+    fcntl( fd, F_SETFL, oflags | FASYNC);
+	//fcntl( fd, F_SETFL, FASYNC);
     // End Read Geiger Thread Setup
     printf("Set FASYNC flag and created geiger_thread thread\n");
-    */
+#endif
+
+#ifdef MULTITHREADING_LDD3
+	pthread_t geiger_thread;
+	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
+    signal(SIGIO, &geiger_handler);
+    fcntl( fd, F_SETOWN, geiger_thread);
+    int oflags = fcntl( fd, F_GETFL);
+    fcntl( fd, F_SETFL, oflags | FASYNC);
+    printf("Multithreading with LDD3 \n");
+
 
     // Set up the GPIO
     GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
@@ -154,11 +225,12 @@ int main( int argc, char **argv )
     monitor.debounceMilliSec = 0;
     
     printf("At ioctl fileno check.\n");
-    if ( ioctl( fileno( fs ), GPIO_EVENT_IOCTL_MONITOR_GPIO, &monitor ) != 0 )
+    if ( ioctl( fd, GPIO_EVENT_IOCTL_MONITOR_GPIO, &monitor ) != 0 )
     {
         perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
     }
     
+#endif
     // Manual reading of file
     ssize_t numBytes;
     char    argStr[ 60 ];
@@ -169,7 +241,8 @@ int main( int argc, char **argv )
 
     while(1)
     {
-        printf(" at fgets.. \n");
+#ifdef REPORT_IN_MAIN
+        printf("Reporting in main.. \n");
         // fgets stores incoming bytes from fs into argStr until an EOL or EOF has been read
         if ( fgets( argStr, sizeof( argStr ), fs ) != NULL )
             {
@@ -184,13 +257,14 @@ int main( int argc, char **argv )
 
                 if ( gMonitor )
                 {
-                    printf( "Read:/ '%s'\n", argStr );
+                    printf( "Read: '%s'\n", argStr );
                 }
             }
         else
         {
             argStr[ 0 ] = '\0';
         }
+#endif 
     }
 
     printf( "closing app \n");
