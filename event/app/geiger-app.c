@@ -30,9 +30,7 @@
 
 // Additional includes from main.cpp
 #include <stdint.h>
-//#include <sys/types.h>
 #include <signal.h>
-//#include <list>
 
 // gpio-notify
 #include <sys/ioctl.h>
@@ -40,12 +38,6 @@
 // for geiger handling
 #include <pthread.h>
 #include <signal.h>
-
-//#include "svn-version.h"
-
-#if !defined( SVN_REVISION )
-#   define SVN_REVISION  0
-#endif
 
 #include "gpio-event-drv.h"
 
@@ -60,15 +52,17 @@ void* geiger_handler(void *arg){
 	//char tmp_buf[1024], temp1;
 	//int signo, i, j;
 	int signo;
+    int counter=0;
     //int inputId = *(int *)arg;
     
 	for(;;){
         
         // Suspend geiger_handler thread until a signal is available
-        //
-        printf("At sigwait.. \n");
 		sigwait(&mask, &signo); //&mask is defined in main function
-        printf("Sigwait triggered! \n");
+        counter++;
+        printf("Counter %d \n", counter); 
+
+ //       printf("Sigwait triggered! \n");
 
         
         /*
@@ -131,6 +125,7 @@ int main( int argc, char **argv )
         exit( 1 );
     }
     int fd = fileno(fs);
+    printf( "Opened device file %s on fd %d. \n", GPIO_DEVICE_FILENAME, fd);
 #endif
 
 #ifdef OPEN_NOTIFY
@@ -144,21 +139,38 @@ int main( int argc, char **argv )
 #endif
 
 #ifdef FASYNC_NOTIFY
-    // set this process as owner of the device file
-    printf("Setting file owner.\n");
-    fcntl(fd, F_SETOWN, getpid());
     
+    // TODO: set waitsignals
+    // specify which signals we will catch
+    sigset_t oldmask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGIO);
+
+    // Setup Read Geiger Thread
+	pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
+	pthread_t geiger_thread;
+	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
+    // Set file ownership to the geiger thread
+	//fcntl( fd, F_SETOWN, geiger_thread);
+    //TODO: why does it work with getpid() but not assigning to the geiger_thread?
+	int owner_id = fcntl( fd, F_SETOWN, getpid());
+    printf("The process id owner of %s is %d \n", GPIO_DEVICE_FILENAME, owner_id);
+	fcntl( fd, F_SETOWN, getpid());
+    printf("The new process id owner of %s is %d \n", GPIO_DEVICE_FILENAME, owner_id);
+	fcntl( fd, F_SETFL, FASYNC);
+    //int oflags = fcntl( fd, F_GETFL);
+    //fcntl( fd, F_SETFL, oflags | FASYNC);
+    printf("FASYNC flag set and ownership given to the geiger thread... \n");
+
+    /*
     // set FASYNC flag on the device file to enable SIGIO notifications
     printf("Setting FASYNC flag.\n");
     int oflags = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, oflags | FASYNC);
-
-    // specify which signals we will catch
-    sigset_t waitSignals;
-    sigemptyset(&waitSignals);
-    sigaddset(&waitSignals, SIGIO);
+    */
 
     // Set up the GPIO
+    printf("Setting up the GPIO ... \n");
     GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
     monitor.gpio    = 168;
     monitor.onOff   = 1;
@@ -171,23 +183,15 @@ int main( int argc, char **argv )
         perror( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
         printf( "ioctl GPIO_EVENT_IOCTL_MONITOR_GPIO failed" );
     }
-
-    int signal;
-    printf("At FASYNC_NOTIFY, waiting for signal .. \n");
-    sigwait(&waitSignals, &signal);
-    printf("At FASYNC_NOTIFY, signal received! \n");
+    printf("GPIO monitoring set up ...\n");
     
-    // Setup Read Geiger Thread
-	pthread_t geiger_thread;
-	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
-	fcntl( fd, F_SETOWN, geiger_thread);
-	//fcntl( fd, F_SETOWN, getpid() );
-    int oflags = fcntl( fd, F_GETFL);
-    fcntl( fd, F_SETFL, oflags | FASYNC);
-	//fcntl( fd, F_SETFL, FASYNC);
-    // End Read Geiger Thread Setup
-    printf("Set FASYNC flag and created geiger_thread thread\n");
-    
+    int i = 0;
+    for (i=0;40;i++)
+    {
+        printf("Main thread counter %d \n", i); 
+        sleep(1);
+    }
+        
 #endif
 
 
@@ -210,10 +214,7 @@ int main( int argc, char **argv )
 	pthread_t geiger_thread;
 	pthread_create(&geiger_thread, NULL, geiger_handler, NULL); 
 	fcntl( fd, F_SETOWN, geiger_thread);
-	//fcntl( fd, F_SETOWN, getpid() );
-    int oflags = fcntl( fd, F_GETFL);
-    fcntl( fd, F_SETFL, oflags | FASYNC);
-	//fcntl( fd, F_SETFL, FASYNC);
+	fcntl( fd, F_SETFL, FASYNC);
     // End Read Geiger Thread Setup
     printf("Set FASYNC flag and created geiger_thread thread\n");
 #endif
@@ -279,8 +280,8 @@ int main( int argc, char **argv )
     }
 
     printf( "closing app \n");
-    //fclose( fs );
-    //exit( 0 );
+    fclose( fs );
+    exit( 0 );
     return 0;
 
 } // main
