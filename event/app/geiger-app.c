@@ -34,6 +34,7 @@
 
 // gpio-notify
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 
 // for geiger handling
 #include <pthread.h>
@@ -99,6 +100,28 @@ void* geiger_handler(void *arg){
 	}
 } // geiger_thread
 
+
+int geiger_counter_power(int onOff){
+    
+    int rc = 0;
+
+    if (onOff == 0){
+        printf("Turning geiger counter on \n");
+        system("echo 168 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio168/direction");
+        system("echo 1 > /sys/class/gpio/gpio168/value");
+    }
+    else{
+        printf("Turning geiger counter off \n");
+        system("echo 168 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio168/direction");
+        system("echo 0 > /sys/class/gpio/gpio168/value");
+    }
+    return rc;
+
+}//end geiger_counter_power
+
+
 //#define MULTITHREADING
 //#define MULTITHREADING_LDD3
 //#define MULTITHREADING_MAIN 
@@ -106,6 +129,7 @@ void* geiger_handler(void *arg){
 //#define OPEN_EVENT
 #define OPEN_NOTIFY
 #define FASYNC_NOTIFY 
+
 
 /****************************************************************************
 *
@@ -117,6 +141,17 @@ int main( int argc, char **argv )
 {
 
     FILE               *fs;
+
+    // Testing power to the geiger counter
+    int i;
+    //for (i=0; i<10; i++){
+        //geiger_counter_power(1);
+        //sleep(1);
+        //geiger_counter_power(0);
+        //printf(" i = %d ... \n", i );
+        //sleep(1);
+    //}
+
 
 #ifdef OPEN_EVENT
     if (( fs = fopen( GPIO_DEVICE_FILENAME, "r" )) == NULL )
@@ -172,6 +207,7 @@ int main( int argc, char **argv )
     // Set up the GPIO
     printf("Setting up the GPIO ... \n");
     GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
+    monitor.gpio    = 146;
     monitor.gpio    = 168;
     monitor.onOff   = 1;
     monitor.edgeType = GPIO_EventRisingEdge;
@@ -185,12 +221,12 @@ int main( int argc, char **argv )
     }
     printf("GPIO monitoring set up ...\n");
     
-    int i = 0;
-    for (i=0;40;i++)
-    {
-        printf("Main thread counter %d \n", i); 
-        sleep(1);
-    }
+    //int i = 0;
+    //for (i=0;40;i++)
+    //{
+        //printf("Main thread counter %d \n", i); 
+        //sleep(1);
+    //}
         
 #endif
 
