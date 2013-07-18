@@ -107,15 +107,15 @@ int geiger_counter_power(int onOff){
 
     if (onOff == 0){
         printf("Turning geiger counter on \n");
-        system("echo 168 > /sys/class/gpio/export");
-        system("echo out > /sys/class/gpio/gpio168/direction");
-        system("echo 1 > /sys/class/gpio/gpio168/value");
+        system("echo 60 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio60/direction");
+        system("echo 1 > /sys/class/gpio/gpio60/value");
     }
     else{
         printf("Turning geiger counter off \n");
-        system("echo 168 > /sys/class/gpio/export");
-        system("echo out > /sys/class/gpio/gpio168/direction");
-        system("echo 0 > /sys/class/gpio/gpio168/value");
+        system("echo 60 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio60/direction");
+        system("echo 0 > /sys/class/gpio/gpio60/value");
     }
     return rc;
 
@@ -144,13 +144,13 @@ int main( int argc, char **argv )
 
     // Testing power to the geiger counter
     int i;
-    //for (i=0; i<10; i++){
-        //geiger_counter_power(1);
-        //sleep(1);
-        //geiger_counter_power(0);
-        //printf(" i = %d ... \n", i );
-        //sleep(1);
-    //}
+    for (i=0; i<10; i++){
+        geiger_counter_power(1);
+        sleep(1);
+        geiger_counter_power(0);
+        printf(" i = %d ... \n", i );
+        sleep(1);
+    }
 
 
 #ifdef OPEN_EVENT
@@ -175,7 +175,6 @@ int main( int argc, char **argv )
 
 #ifdef FASYNC_NOTIFY
     
-    // TODO: set waitsignals
     // specify which signals we will catch
     sigset_t oldmask;
     sigemptyset(&mask);
@@ -191,7 +190,7 @@ int main( int argc, char **argv )
 	int owner_id = fcntl( fd, F_SETOWN, getpid());
     printf("The process id owner of %s is %d \n", GPIO_DEVICE_FILENAME, owner_id);
 	fcntl( fd, F_SETOWN, getpid());
-    printf("The new process id owner of %s is %d \n", GPIO_DEVICE_FILENAME, owner_id);
+    //printf("The new process id owner of %s is %d \n", GPIO_DEVICE_FILENAME, owner_id);
 	fcntl( fd, F_SETFL, FASYNC);
     //int oflags = fcntl( fd, F_GETFL);
     //fcntl( fd, F_SETFL, oflags | FASYNC);
@@ -208,7 +207,7 @@ int main( int argc, char **argv )
     printf("Setting up the GPIO ... \n");
     GPIO_EventMonitor_t     monitor;  // defined in gpio_event_driver.h 
     monitor.gpio    = 146;
-    monitor.gpio    = 168;
+    //monitor.gpio    = 168;
     monitor.onOff   = 1;
     monitor.edgeType = GPIO_EventRisingEdge;
     monitor.debounceMilliSec = 0;

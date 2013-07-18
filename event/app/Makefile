@@ -20,11 +20,11 @@ else
 PWD       := $(shell pwd)
 
 #FOOFOO
-#OVEROTOP	?= /home/dario/overo-oe
-#CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
+OVEROTOP	?= /home/dario/overo-oe
+CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/i686-linux/usr/armv7a/bin/arm-angstrom-linux-gnueabi-
 #DV6
-OVEROTOP	?= /home/d/yocto/build
-CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/x86_64-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi/arm-poky-linux-gnueabi-
+#OVEROTOP	?= /home/d/yocto/build
+#CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/x86_64-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi/arm-poky-linux-gnueabi-
 #CROSS_COMPILE	?= $(OVEROTOP)/tmp/sysroots/x86_64-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi-
 
 
