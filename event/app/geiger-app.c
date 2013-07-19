@@ -43,6 +43,8 @@
 #include "gpio-event-drv.h"
 
 #define GPIO_DEVICE_FILENAME "/dev/gpio-event"
+#define GPIO_GEIGER_POWER 147 
+#define GPIO_GEIGER_SIGNAL 146 
 
 /***************************************************************************
 * Geiger handler function  
@@ -104,19 +106,33 @@ void* geiger_handler(void *arg){
 int geiger_counter_power(int onOff){
     
     int rc = 0;
-
+    int power_pin = 19;
+    /*
     if (onOff == 0){
         printf("Turning geiger counter on \n");
-        system("echo 60 > /sys/class/gpio/export");
-        system("echo out > /sys/class/gpio/gpio60/direction");
-        system("echo 1 > /sys/class/gpio/gpio60/value");
+        system("echo 19 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio19/direction");
+        system("echo 1 > /sys/class/gpio/gpio19/value");
     }
     else{
         printf("Turning geiger counter off \n");
-        system("echo 60 > /sys/class/gpio/export");
-        system("echo out > /sys/class/gpio/gpio60/direction");
-        system("echo 0 > /sys/class/gpio/gpio60/value");
+        system("echo 19 > /sys/class/gpio/export");
+        system("echo out > /sys/class/gpio/gpio19/direction");
+        system("echo 0 > /sys/class/gpio/gpio19/value");
     }
+    */
+
+    if (onOff == 0){
+        printf("Turning geiger counter off \n");
+        system("sh powerGpio.sh 0 147");
+    }
+    else{
+        printf("Turning geiger counter on \n");
+        system("sh powerGpio.sh 1 147");
+    }
+    
+
+
     return rc;
 
 }//end geiger_counter_power
@@ -142,16 +158,20 @@ int main( int argc, char **argv )
 
     FILE               *fs;
 
+#ifdef GEIGER_TESTING
     // Testing power to the geiger counter
     int i;
     for (i=0; i<10; i++){
-        geiger_counter_power(1);
-        sleep(1);
-        geiger_counter_power(0);
         printf(" i = %d ... \n", i );
-        sleep(1);
+        geiger_counter_power(1);
+        sleep(2);
+        geiger_counter_power(0);
+        sleep(2);
     }
+#endif
 
+    // Turn Geiger counter on for monitoring
+    geiger_counter_power(1);
 
 #ifdef OPEN_EVENT
     if (( fs = fopen( GPIO_DEVICE_FILENAME, "r" )) == NULL )
