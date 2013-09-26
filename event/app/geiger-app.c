@@ -103,10 +103,11 @@ void* geiger_handler(void *arg){
 } // geiger_thread
 
 
-int geiger_counter_power(int onOff){
+int geiger_counter_power(void){
     
     int rc = 0;
-    int power_pin = 19;
+    //int power_pin = 19;
+    system("sh overoGpioPowerToggle.sh");
     /*
     if (onOff == 0){
         printf("Turning geiger counter on \n");
@@ -122,8 +123,10 @@ int geiger_counter_power(int onOff){
     }
     */
 
+    /*
     if (onOff == 0){
         printf("Turning geiger counter off \n");
+        //system("sh powerGpio.sh 0 147");
         system("sh powerGpio.sh 0 147");
     }
     else{
@@ -131,6 +134,7 @@ int geiger_counter_power(int onOff){
         system("sh powerGpio.sh 1 147");
     }
     
+    */
 
 
     return rc;
@@ -163,15 +167,15 @@ int main( int argc, char **argv )
     int i;
     for (i=0; i<10; i++){
         printf(" i = %d ... \n", i );
-        geiger_counter_power(1);
+        geiger_counter_power();
         sleep(2);
-        geiger_counter_power(0);
+        geiger_counter_power();
         sleep(2);
     }
 #endif
 
     // Turn Geiger counter on for monitoring
-    geiger_counter_power(1);
+    geiger_counter_power();
 
 #ifdef OPEN_EVENT
     if (( fs = fopen( GPIO_DEVICE_FILENAME, "r" )) == NULL )
@@ -299,12 +303,12 @@ int main( int argc, char **argv )
     
 #endif
     // Manual reading of file
-    ssize_t numBytes;
-    char    argStr[ 60 ];
-    argStr[ 0 ] = '\0';
+    //ssize_t numBytes;
+    //char    argStr[ 60 ];
+    //argStr[ 0 ] = '\0';
 
-    int gMonitor = 1;
-    int counter = 0;
+    //int gMonitor = 1;
+    //int counter = 0;
 
     while(1)
     {
